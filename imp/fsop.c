@@ -80,6 +80,7 @@ int write_inode(fs *file, inode *cache, int validInodeCount) {
 }
 
 int write_fs_info(fs *newFs) {
+    fseek(newFs->mem_fd, 0, 0);
     fprintf(newFs->mem_fd, "%ld%ld", newFs->disk_blockCount, newFs->disk_validInodeCount);
     newFs->mem_bitmapOffset = ftell(newFs->mem_fd);
     for (long i = 0; i < newFs->disk_blockCount; i++) {
@@ -107,7 +108,8 @@ fsd_t init_fs(const char *fspath, long blockCount, int mode) {
     }
     newFs->disk_mode = mode;
     newFs->mem_diskFileName = fspath;
-    newFs->disk_bitMap = (unsigned char *) malloc(sizeof(blockCount * BLOCK_SIZE_IN_BYTE));
+    newFs->disk_bitMap = (unsigned char *) malloc(blockCount * BLOCK_SIZE_IN_BYTE);
+    memset(newFs->disk_bitMap, BLOCK_FLAG_EMPTY, blockCount * BLOCK_SIZE_IN_BYTE);
     newFs->mem_operatorList = NULL;
     write_fs_info(newFs);
     if (mode == FS_ONCE) {
@@ -147,7 +149,7 @@ fsd_t init_fs(const char *fspath, long blockCount, int mode) {
         free(head);
         return ret;
     }
-    return fsCount;
+    return newFs->mem_fsd;
 }
 
 int close_fs(fsd_t fsd) {
@@ -160,4 +162,5 @@ int close_fs(fsd_t fsd) {
         return VIRTUAL_DISK_FILE_CLOSE_ERROR;
     }
     free(&openedFileSystem[fsd]);
+    return VIRTUAL_DISK_OPERATION_SUCCESS;
 }
