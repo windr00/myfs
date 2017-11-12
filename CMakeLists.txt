@@ -3,5 +3,22 @@ project(myfs)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES test/test.c imp/myfile.h imp/myfile.c imp/dentry.h imp/inode.h imp/dirdata.h imp/foperator.h imp/fs.h imp/fsop.c imp/inode.c)
-add_executable(myfs ${SOURCE_FILES})
+set(HEADER declare/dentry.h
+        declare/dirdata.h
+        declare/errnum.h
+        declare/foperator.h
+        declare/fs.h
+        declare/inode.h
+        declare/myfile.h
+        )
+
+set(IMPL imp/fsop.c
+        imp/inode.c
+        imp/myfile.c)
+
+set(TEST test/test.c)
+
+add_library(myfs ${HEADER} ${IMPL})
+
+add_executable(myfs_test ${TEST})
+target_link_libraries(myfs_test myfs)
