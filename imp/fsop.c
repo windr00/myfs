@@ -30,18 +30,33 @@ fs * resize_fs_array() {
     return openedFileSystem + (fsCount - 1);
 };
 
-int find_empty_block(fs *file) {
+int find_first_empty_block(fs *file) {
     for (int i = 0; i < file->disk_blockCount; i++) {
         if (file->disk_bitMap[i] == BLOCK_FLAG_EMPTY) {
             return i;
         }
     }
+    return VIRTUAL_DISK_FULL_ERROR;
+}
+
+int find_last_empty_block(fs * file) {
+    int empty = VIRTUAL_DISK_FULL_ERROR;
+    for (int i = 0; i < file->disk_blockCount; i++) {
+        if (file->disk_bitMap[i] == BLOCK_FLAG_EMPTY) {
+            empty = i;
+        }
+    }
+    return empty;
 }
 
 int expand_disk_size(fs *file, long block_index) {
     fseek(file->mem_fd, file->mem_blockSectorOffset, 0);
     char block[BLOCK_SIZE_IN_BYTE] = {0};
-    for (int i = 0; i < block_index; i++) {
+    int i = find_last_empty_block(file);
+    if (i == VIRTUAL_DISK_FULL_ERROR) {
+        return VIRTUAL_DISK_FULL_ERROR;
+    }
+    for (i; i < block_index; i++) {
         fwrite(block, BLOCK_SIZE_IN_BYTE, 1, file->mem_fd);
     }
     return VIRTUAL_DISK_OPERATION_SUCCESS;
@@ -68,7 +83,7 @@ int write_inode(fs *file, inode *cache, int validInodeCount) {
     fseek(file->mem_fd, file->mem_inodeSectorOffset, 0);
     fwrite(cache, INODE_SIZE_IN_BYTE, (size_t) validInodeCount, file->mem_fd);
     char tmp[INODE_SIZE_IN_BYTE] = {0};
-    for (int i = 0; i < file->disk_blockCount - validInodeCount; i++) {
+    for (int i = 0; i < (file->disk_blockCount / INODE_BLOCK_SCALAR) - validInodeCount; i++) {
         fwrite(tmp, INODE_SIZE_IN_BYTE, 1, file->mem_fd);
     }
     return VIRTUAL_DISK_OPERATION_SUCCESS;
@@ -100,10 +115,11 @@ fsd_t init_fs(const char *fspath, long blockCount, int mode) {
     newFs->mem_operatorList = NULL;
     write_fs_info(newFs);
     if (mode == FS_ONCE) {
-        char block[BLOCK_SIZE_IN_BYTE] = {0};
-        for (long i = 0; i < blockCount; i++) {
-            fwrite(block, BLOCK_SIZE_IN_BYTE, 1, newFs->mem_fd);
-        }
+        expand_disk_size(newFs, blockCount - 1);
+//        char block[BLOCK_SIZE_IN_BYTE] = {0};
+//        for (long i = 0; i < blockCount; i++) {
+//            fwrite(block, BLOCK_SIZE_IN_BYTE, 1, newFs->mem_fd);
+//        }
     }
     dirdata data;
     data.childCount = 0;
@@ -120,7 +136,7 @@ fsd_t init_fs(const char *fspath, long blockCount, int mode) {
     head->nodeNum = 0;
 
     root->lastBlockSize = sizeof(data);
-    root->directLinkedBlock[root->lastBlockIndex] = find_empty_block(newFs);
+    root->directLinkedBlock[root->lastBlockIndex] = find_first_empty_block(newFs);
     newFs->built_dirEntryHead = head;
     newFs->disk_inodeCache = root;
     int ret = write_block(newFs, sizeof(data), &data, root->directLinkedBlock[root->lastBlockIndex]);

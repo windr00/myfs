@@ -7,8 +7,10 @@
 #include "dentry.h"
 
 #define DIRECT_BLOCK_COUNT       1024
-#define SECOND_LEVEL_BLOCK_COUNT 256
-#define THIRD_LEVEL_BLOCK_COUNT  64
+#define SECOND_LEVEL_BLOCK_COUNT 64
+#define THIRD_LEVEL_BLOCK_COUNT  16
+#define INODE_SIZE_IN_BYTE sizeof(inode)
+#define INODE_BLOCK_SCALAR 4
 
 typedef struct _inode_{
 
@@ -32,7 +34,6 @@ typedef struct _inode_{
 
 inode * newEmptyInode();
 
-#define INODE_SIZE_IN_BYTE sizeof(inode)
 
 
 #endif //MYFS_INODE_H
