@@ -2,34 +2,35 @@
 // Created by windr on 17-11-11.
 //
 #include <stdio.h>
-#include <malloc.h>
-#include <mem.h>
+#include <stdlib.h>
+#include <string.h>
 #include "myfile.c"
 #include "../declare/dirdata.h"
-#include "../declare/errnum.h"
 
-static fs * openedFileSystem;
-
-int fsCount = 0;
 
 fs * resize_fs_array() {
-    if (openedFileSystem == NULL) {
-        openedFileSystem = (fs *)malloc(sizeof(fs));
-        openedFileSystem->mem_fsd = fsCount;
-        openedFileSystem->disk_validInodeCount = 1;
-        openedFileSystem->disk_inodeCache = (inode *) malloc(sizeof(inode));
-        fsCount++;
-        return  openedFileSystem + (fsCount - 1);
+    if (global_openedFileSystem == NULL) {
+        global_openedFileSystem = (fs *) malloc(sizeof(fs));
+        global_openedFileSystem->mem_fsd = global_fsCount;
+        global_openedFileSystem->disk_validInodeCount = 1;
+        global_openedFileSystem->disk_inodeCache = (inode *) malloc(sizeof(inode));
+        global_fsCount++;
+        return global_openedFileSystem + (global_fsCount - 1);
     }
 
-    fs * temp = (fs *)malloc(sizeof(fs) * (fsCount + 1));
-    memcpy(temp, openedFileSystem, sizeof(fs) * (fsCount));
-    free(openedFileSystem);
-    openedFileSystem = temp;
-    fsCount++;
-    return openedFileSystem + (fsCount - 1);
+    fs *temp = (fs *) malloc(sizeof(fs) * (global_fsCount + 1));
+    memcpy(temp, global_openedFileSystem, sizeof(fs) * (global_fsCount));
+    free(global_openedFileSystem);
+    global_openedFileSystem = temp;
+    global_fsCount++;
+    return global_openedFileSystem + (global_fsCount - 1);
 };
 
+/**
+ * find the beginning index of the first empty sector of the disk
+ * @param file
+ * @return returns VIRTUAL_DISK_FULL_ERROR when there is no empty sector left on the disk
+ */
 int find_first_empty_block(fs *file) {
     for (int i = 0; i < file->disk_blockCount; i++) {
         if (file->disk_bitMap[i] == BLOCK_FLAG_EMPTY) {
@@ -39,23 +40,42 @@ int find_first_empty_block(fs *file) {
     return VIRTUAL_DISK_FULL_ERROR;
 }
 
+/**
+ * find the beginning block index of the last empty sector of the disk on the tail
+ * @param file file system structure reference
+ * @return returns VIRTUAL_DISK_FULL_ERROR when there is no empty sector left on the tail
+ */
 int find_last_empty_block(fs * file) {
     int empty = VIRTUAL_DISK_FULL_ERROR;
+    int lastEmpty = 0;
     for (int i = 0; i < file->disk_blockCount; i++) {
         if (file->disk_bitMap[i] == BLOCK_FLAG_EMPTY) {
-            empty = i;
+            if (!lastEmpty) {
+                lastEmpty = 1;
+                empty = i;
+            }
+        } else {
+            lastEmpty = 0;
         }
     }
     return empty;
 }
 
+/**
+ * expand the disk to the position of the given block index
+ * <br>
+ * only used in F_LAZY mode
+ * @param file
+ * @param block_index
+ * @return
+ */
 int expand_disk_size(fs *file, long block_index) {
-    fseek(file->mem_fd, file->mem_blockSectorOffset, 0);
     char block[BLOCK_SIZE_IN_BYTE] = {0};
     int i = find_last_empty_block(file);
     if (i == VIRTUAL_DISK_FULL_ERROR) {
         return VIRTUAL_DISK_FULL_ERROR;
     }
+    fseek(file->mem_fd, file->mem_blockSectorOffset, 0);
     for (i; i < block_index; i++) {
         fwrite(block, BLOCK_SIZE_IN_BYTE, 1, file->mem_fd);
     }
@@ -151,13 +171,13 @@ fsd_t init_fs(const char *fspath, long blockCount, int mode) {
 }
 
 int close_fs(fsd_t fsd) {
-    fs *file = openedFileSystem + fsd;
+    fs *file = global_openedFileSystem + fsd;
     int ret = write_fs_info(file);
     ret &= fclose(file->mem_fd);
     if (ret) {
-        free(&openedFileSystem[fsd]);
+        free(&global_openedFileSystem[fsd]);
         return VIRTUAL_DISK_FILE_CLOSE_ERROR;
     }
-    free(&openedFileSystem[fsd]);
+    free(&global_openedFileSystem[fsd]);
     return VIRTUAL_DISK_OPERATION_SUCCESS;
 }

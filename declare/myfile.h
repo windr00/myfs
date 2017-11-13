@@ -4,8 +4,6 @@
 
 #include "fs.h"
 
-#ifndef MYFS_MYFILE_H
-#define MYFS_MYFILE_H
 #define O_RDONLY 0 //read only
 #define O_WRONLY 1 //write only
 #define O_RDWR 2 // read & write
@@ -20,19 +18,19 @@ fsd_t load_fs(const char *fspath);
 
 fsd_t init_fs(const char *fspath, long blockCount, int mode);
 
-fd_t /*mem_fd*/ f_open(const char *pathname, int oflag, ...);
+fd_t /*mem_fd*/ f_open(fsd_t fsd, const char *pathname, int oflag, ...);
 
-int close(fd_t fd);
+int f_close(fsd_t fsd, fd_t fd);
 
 int close_fs(fsd_t fsd);
 
-long f_read(fd_t fd, void *buf, long count);
+long f_read(fsd_t fsd, fd_t fd, void *buf, long count);
 
-long f_write(fd_t fd, void *buf, long count);
+long f_write(fsd_t fsd, fd_t fd, void *buf, long count);
 
-int unlink_f(const char *pathname);
+int unlink_f(fsd_t fsd, const char *pathname);
 
-dentry * diropen(const char * path);
+dentry *diropen(fsd_t fsd, const char *path);
 
-dentry * dirread(dentry * dir);
-#endif //MYFS_MYFILE_H
+dentry *dirread(fsd_t fsd, dentry *dir);
+

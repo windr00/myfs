@@ -14,7 +14,7 @@ set(HEADER declare/dentry.h
 
 set(IMPL imp/fsop.c
         imp/inode.c
-        imp/myfile.c)
+        imp/myfile.c declare/global.h)
 
 set(TEST test/test.c)
 
